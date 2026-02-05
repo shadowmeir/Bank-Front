@@ -35,9 +35,16 @@ export function LoginPage() {
       await login(email.trim(), password);
       navigate("/dashboard");
     } catch (err) {
-			if (err instanceof ApiError && err.status === 403) {
-				setNeedsVerify(true);
-			}
+      if (err instanceof ApiError && err.status === 403) {
+        const title = err.details?.title ?? "";
+        if (title === "EmailNotConfirmed" || title === "AccountPending") {
+          setNeedsVerify(true);
+        } else if (title === "AccountBlocked") {
+          setNeedsVerify(false);
+          setError("Your account is blocked. Please contact support.");
+          return;
+        }
+      }
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setIsLoading(false);

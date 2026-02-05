@@ -9,7 +9,7 @@ import {
 
 import { DepositPage } from "./pages/DepositPage";
 import { WithdrawPage } from "./pages/WithdrawPage";
-
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
@@ -47,6 +47,7 @@ export function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/verify-email/sent" element={<VerifyEmailSentPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>

@@ -17,8 +17,7 @@ import {
   Sun,
   Monitor,
   LogOut,
-  Edit,
-  Camera,
+Camera,
 } from "lucide-react";
 
 import { Sidebar } from "../components/ui/Sidebar";
@@ -142,12 +141,6 @@ export function SettingsPage() {
                 <p className="text-sm text-gray-400">{profile?.email ?? ""}</p>
               </div>
             </div>
-
-            <Button variant="outline" size="sm" className="hidden sm:flex items-center gap-2">
-              <Edit className="w-4 h-4" />
-              Edit
-            </Button>
-
             {/* b6: This is the SIGN OUT button you asked about — now wired */}
             <Button
               variant="outline"

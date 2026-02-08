@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, User, Phone, Shield, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { Mail, Lock, User, Phone, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { GlassCard } from "../components/ui/GlassCard";
@@ -24,9 +24,6 @@ export function SignUpPage() {
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // PIN is UI-only for now (not stored server-side yet)
-  const [pin, setPin] = useState("");
-  const [pin2, setPin2] = useState("");
 
   const [error, setError] = useState<string | null>(null);
 
@@ -55,9 +52,6 @@ export function SignUpPage() {
     }
 
     // step === 3
-    if (!pin || !pin2) return setError("Please enter your PIN.");
-    if (pin !== pin2) return setError("PINs do not match.");
-    if (pin.length !== 4) return setError("PIN must be 4 digits.");
 
     setIsLoading(true);
     try {
@@ -203,35 +197,21 @@ export function SignUpPage() {
 
               {step === 3 && (
                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                  <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold">Secure Your Account</h2>
-                    <p className="text-gray-400 text-sm">Set up a PIN for quick access</p>
-                  </div>
 
-                  <Input
-                    label="4-Digit PIN"
-                    type="password"
-                    maxLength={4}
-                    placeholder="••••"
-                    className="text-center tracking-[1em] text-lg"
-                    icon={<Shield className="w-5 h-5" />}
-                    required
-                    autoFocus
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                  />
+<div className="text-center mb-6">
+  <h2 className="text-2xl font-bold">Secure Your Account</h2>
+  <p className="text-gray-400 text-sm">
+    After you create the account, we’ll send a verification email.
+  </p>
+</div>
 
-                  <Input
-                    label="Confirm PIN"
-                    type="password"
-                    maxLength={4}
-                    placeholder="••••"
-                    className="text-center tracking-[1em] text-lg"
-                    icon={<Shield className="w-5 h-5" />}
-                    required
-                    value={pin2}
-                    onChange={(e) => setPin2(e.target.value)}
-                  />
+<div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
+  <ul className="list-disc list-inside space-y-2">
+    <li>Click <span className="text-white font-medium">Create Account</span>.</li>
+    <li>Check your inbox for the verification email.</li>
+    <li>Open it and click the confirmation link to activate your account.</li>
+  </ul>
+</div>
                 </motion.div>
               )}
             </AnimatePresence>

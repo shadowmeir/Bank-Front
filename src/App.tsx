@@ -23,6 +23,7 @@ import { TransactionsPage } from "./pages/TransactionsPage";
 import { TransferPage } from "./pages/TransferPage";
 import { CardsPage } from "./pages/CardsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ChatbotPage } from "./pages/ChatbotPage";
 import { OpenAccountPage } from "./pages/OpenAccountPage";
 
 import { AccountProvider } from "./contexts/AccountContext";
@@ -61,6 +62,7 @@ export function App() {
             <Route path="/transfer" element={<TransferPage />} />
             <Route path="/cards" element={<CardsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/chat" element={<ChatbotPage />} />
           </Route>
         </Route>
 

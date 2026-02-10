@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
+  Bot,
   ArrowRightLeft,
   Send,
   CreditCard,
@@ -28,6 +29,11 @@ export function Sidebar() {
       path: "/dashboard",
       icon: <LayoutDashboard className="w-5 h-5" />,
       label: "Portfolio Overview",
+    },
+    {
+      path: "/chat",
+      icon: <Bot className="w-5 h-5" />,
+      label: "Chatbot",
     },
     ...(currentAccount
       ? [

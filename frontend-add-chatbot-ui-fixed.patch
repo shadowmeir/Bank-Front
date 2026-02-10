@@ -1,6 +1,6 @@
-diff -ruN front_orig/Bank-Front-main/package.json front/Bank-Front-main/package.json
---- front_orig/Bank-Front-main/package.json	2026-02-08 17:23:06.000000000 +0000
-+++ front/Bank-Front-main/package.json	2026-02-10 17:59:12.473257304 +0000
+diff -ruN package.json package.json
+--- package.json	2026-02-08 17:23:06.000000000 +0000
++++ package.json	2026-02-10 17:59:12.000000000 +0000
 @@ -10,6 +10,7 @@
      "preview": "npx vite preview"
    },
@@ -9,9 +9,9 @@ diff -ruN front_orig/Bank-Front-main/package.json front/Bank-Front-main/package.
      "framer-motion": "^11.5.4",
      "lucide-react": "0.522.0",
      "react": "^18.3.1",
-diff -ruN front_orig/Bank-Front-main/src/App.tsx front/Bank-Front-main/src/App.tsx
---- front_orig/Bank-Front-main/src/App.tsx	2026-02-08 17:23:06.000000000 +0000
-+++ front/Bank-Front-main/src/App.tsx	2026-02-10 18:17:40.742360996 +0000
+diff -ruN src/App.tsx src/App.tsx
+--- src/App.tsx	2026-02-08 17:23:06.000000000 +0000
++++ src/App.tsx	2026-02-10 18:17:40.000000000 +0000
 @@ -23,6 +23,7 @@
  import { TransferPage } from "./pages/TransferPage";
  import { CardsPage } from "./pages/CardsPage";
@@ -28,9 +28,9 @@ diff -ruN front_orig/Bank-Front-main/src/App.tsx front/Bank-Front-main/src/App.t
            </Route>
          </Route>
  
-diff -ruN front_orig/Bank-Front-main/src/components/ui/Sidebar.tsx front/Bank-Front-main/src/components/ui/Sidebar.tsx
---- front_orig/Bank-Front-main/src/components/ui/Sidebar.tsx	2026-02-08 17:23:06.000000000 +0000
-+++ front/Bank-Front-main/src/components/ui/Sidebar.tsx	2026-02-10 18:08:58.375254891 +0000
+diff -ruN src/components/ui/Sidebar.tsx src/components/ui/Sidebar.tsx
+--- src/components/ui/Sidebar.tsx	2026-02-08 17:23:06.000000000 +0000
++++ src/components/ui/Sidebar.tsx	2026-02-10 18:08:58.000000000 +0000
 @@ -2,6 +2,7 @@
  import { Link, useLocation, useNavigate } from "react-router-dom";
  import {
@@ -51,9 +51,9 @@ diff -ruN front_orig/Bank-Front-main/src/components/ui/Sidebar.tsx front/Bank-Fr
      ...(currentAccount
        ? [
            {
-diff -ruN front_orig/Bank-Front-main/src/lib/api.ts front/Bank-Front-main/src/lib/api.ts
---- front_orig/Bank-Front-main/src/lib/api.ts	2026-02-08 17:23:06.000000000 +0000
-+++ front/Bank-Front-main/src/lib/api.ts	2026-02-10 18:00:11.776584470 +0000
+diff -ruN src/lib/api.ts src/lib/api.ts
+--- src/lib/api.ts	2026-02-08 17:23:06.000000000 +0000
++++ src/lib/api.ts	2026-02-10 18:00:11.000000000 +0000
 @@ -1,4 +1,6 @@
 -const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5080").replace(/\/$/, "");
 +// Single source of truth for backend base URL.
@@ -80,9 +80,9 @@ diff -ruN front_orig/Bank-Front-main/src/lib/api.ts front/Bank-Front-main/src/li
  
    if (!res.ok) {
      let pd: ProblemDetails | undefined;
-diff -ruN front_orig/Bank-Front-main/src/lib/chatbot.ts front/Bank-Front-main/src/lib/chatbot.ts
---- front_orig/Bank-Front-main/src/lib/chatbot.ts	1970-01-01 00:00:00.000000000 +0000
-+++ front/Bank-Front-main/src/lib/chatbot.ts	2026-02-10 18:01:21.503489049 +0000
+diff -ruN src/lib/chatbot.ts src/lib/chatbot.ts
+--- src/lib/chatbot.ts	1970-01-01 00:00:00.000000000 +0000
++++ src/lib/chatbot.ts	2026-02-10 18:01:21.000000000 +0000
 @@ -0,0 +1,55 @@
 +import {
 +  HubConnection,
@@ -139,9 +139,9 @@ diff -ruN front_orig/Bank-Front-main/src/lib/chatbot.ts front/Bank-Front-main/sr
 +    isConnected: () => conn.state === HubConnectionState.Connected,
 +  };
 +}
-diff -ruN front_orig/Bank-Front-main/src/pages/ChatbotPage.tsx front/Bank-Front-main/src/pages/ChatbotPage.tsx
---- front_orig/Bank-Front-main/src/pages/ChatbotPage.tsx	1970-01-01 00:00:00.000000000 +0000
-+++ front/Bank-Front-main/src/pages/ChatbotPage.tsx	2026-02-10 18:14:46.657055829 +0000
+diff -ruN src/pages/ChatbotPage.tsx src/pages/ChatbotPage.tsx
+--- src/pages/ChatbotPage.tsx	1970-01-01 00:00:00.000000000 +0000
++++ src/pages/ChatbotPage.tsx	2026-02-10 18:14:46.000000000 +0000
 @@ -0,0 +1,223 @@
 +import { useEffect, useMemo, useRef, useState } from "react";
 +import type { HubConnection } from "@microsoft/signalr";

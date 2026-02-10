@@ -1,0 +1,399 @@
+diff -ruN src/App.tsx src/App.tsx
+--- src/App.tsx	2026-02-10 18:17:40.000000000 +0000
++++ src/App.tsx	2026-02-10 19:15:09.797899183 +0000
+@@ -23,7 +23,6 @@
+ import { TransferPage } from "./pages/TransferPage";
+ import { CardsPage } from "./pages/CardsPage";
+ import { SettingsPage } from "./pages/SettingsPage";
+-import { ChatbotPage } from "./pages/ChatbotPage";
+ import { OpenAccountPage } from "./pages/OpenAccountPage";
+ 
+ import { AccountProvider } from "./contexts/AccountContext";
+@@ -62,7 +61,6 @@
+             <Route path="/transfer" element={<TransferPage />} />
+             <Route path="/cards" element={<CardsPage />} />
+             <Route path="/settings" element={<SettingsPage />} />
+-            <Route path="/chat" element={<ChatbotPage />} />
+           </Route>
+         </Route>
+ 
+diff -ruN src/components/ProtectedRoute.tsx src/components/ProtectedRoute.tsx
+--- src/components/ProtectedRoute.tsx	2026-02-08 17:23:06.000000000 +0000
++++ src/components/ProtectedRoute.tsx	2026-02-10 19:18:55.382658479 +0000
+@@ -1,8 +1,16 @@
+ import { Navigate, Outlet } from "react-router-dom";
+ import { useAuth } from "../contexts/AuthContext";
++import ChatWidget from "./chatbot/ChatWidget";
+ 
+ export default function ProtectedRoute() {
+   const { isAuthed } = useAuth();
+   if (!isAuthed) return <Navigate to="/login" replace />;
+-  return <Outlet />;
++
++  // Make the chatbot available from every authenticated screen.
++  return (
++    <>
++      <Outlet />
++      <ChatWidget />
++    </>
++  );
+ }
+diff -ruN src/components/chatbot/ChatWidget.tsx src/components/chatbot/ChatWidget.tsx
+--- src/components/chatbot/ChatWidget.tsx	1970-01-01 00:00:00.000000000 +0000
++++ src/components/chatbot/ChatWidget.tsx	2026-02-10 19:10:55.363724146 +0000
+@@ -0,0 +1,337 @@
++import { useEffect, useMemo, useRef, useState } from "react";
++import type { HubConnection } from "@microsoft/signalr";
++
++import Button from "../ui/Button";
++import GlassCard from "../ui/GlassCard";
++import { createChatbotConnection } from "../../lib/chatbot";
++
++type ChatMsg = {
++  id: string;
++  from: "user" | "bot" | "system";
++  text: string;
++  at: number; // epoch millis
++};
++
++function makeId() {
++  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
++}
++
++function formatTime(ms: number) {
++  try {
++    return new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
++  } catch {
++    return "";
++  }
++}
++
++/**
++ * Floating “mini chat” window that works from any logged-in page.
++ *
++ * - Lazy-connects to SignalR on first open (keeps the connection alive afterwards).
++ * - Uses the same GlassCard / neon-cyan + neon-purple palette as the rest of the app.
++ */
++export default function ChatWidget() {
++  const [isOpen, setIsOpen] = useState(false);
++  const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "error">("idle");
++  const [input, setInput] = useState("");
++
++  const [messages, setMessages] = useState<ChatMsg[]>(() => [
++    {
++      id: makeId(),
++      from: "bot",
++      text: "Hi! I’m your NeoBank assistant. Type ‘Help’ to see what I can do.",
++      at: Date.now(),
++    },
++  ]);
++
++  const connRef = useRef<HubConnection | null>(null);
++  const scrollRef = useRef<HTMLDivElement | null>(null);
++  const everConnectedRef = useRef(false);
++
++  const statusLabel = useMemo(() => {
++    switch (status) {
++      case "connecting":
++        return "Connecting…";
++      case "connected":
++        return "Online";
++      case "error":
++        return "Offline";
++      default:
++        return "";
++    }
++  }, [status]);
++
++  const statusDotClass = useMemo(() => {
++    switch (status) {
++      case "connected":
++        return "bg-emerald-400";
++      case "connecting":
++        return "bg-yellow-300";
++      case "error":
++        return "bg-rose-400";
++      default:
++        return "bg-white/30";
++    }
++  }, [status]);
++
++  // Scroll to bottom when opened / when messages change.
++  useEffect(() => {
++    if (!isOpen) return;
++    const el = scrollRef.current;
++    if (!el) return;
++    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
++  }, [isOpen, messages.length]);
++
++  // Lazy-connect on first open.
++  useEffect(() => {
++    if (!isOpen) return;
++
++    const connectIfNeeded = async () => {
++      if (connRef.current) return;
++
++      setStatus("connecting");
++      const conn = createChatbotConnection();
++      connRef.current = conn;
++
++      // Bot replies land here.
++      conn.on("ReceiveBotMessage", (text: string) => {
++        setMessages((prev) => [...prev, { id: makeId(), from: "bot", text, at: Date.now() }]);
++      });
++
++      conn.onclose(() => {
++        connRef.current = null;
++        setStatus("idle");
++
++        if (everConnectedRef.current) {
++          setMessages((prev) => [
++            ...prev,
++            {
++              id: makeId(),
++              from: "system",
++              text: "Connection closed. Re-open the chat to reconnect.",
++              at: Date.now(),
++            },
++          ]);
++        }
++      });
++
++      try {
++        await conn.start();
++        everConnectedRef.current = true;
++        setStatus("connected");
++      } catch {
++        connRef.current = null;
++        setStatus("error");
++        setMessages((prev) => [
++          ...prev,
++          {
++            id: makeId(),
++            from: "system",
++            text: "Couldn’t connect to the assistant. Please try again.",
++            at: Date.now(),
++          },
++        ]);
++      }
++    };
++
++    void connectIfNeeded();
++  }, [isOpen]);
++
++  const send = async () => {
++    const text = input.trim();
++    if (!text) return;
++
++    setInput("");
++    setMessages((prev) => [...prev, { id: makeId(), from: "user", text, at: Date.now() }]);
++
++    const conn = connRef.current;
++    if (!conn || status !== "connected") {
++      setMessages((prev) => [
++        ...prev,
++        {
++          id: makeId(),
++          from: "system",
++          text: "Not connected yet. Try again in a second.",
++          at: Date.now(),
++        },
++      ]);
++      return;
++    }
++
++    try {
++      // Backend hub method name (ChatHub.SendToBot)
++      await conn.invoke("SendToBot", text);
++    } catch {
++      setMessages((prev) => [
++        ...prev,
++        {
++          id: makeId(),
++          from: "system",
++          text: "Failed to send. Please try again.",
++          at: Date.now(),
++        },
++      ]);
++    }
++  };
++
++  const onInputKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
++    if (e.key === "Enter" && !e.shiftKey) {
++      e.preventDefault();
++      void send();
++    }
++  };
++
++  return (
++    <div className="fixed bottom-4 right-4 z-50">
++      {/* Collapsed launcher */}
++      {!isOpen && (
++        <button
++          type="button"
++          onClick={() => setIsOpen(true)}
++          className="group relative h-12 w-12 rounded-full"
++          aria-label="Open assistant chat"
++          title="Assistant"
++        >
++          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple opacity-90 blur-[6px] group-hover:opacity-100" />
++          <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-dark-card/80 border border-white/10 shadow-lg">
++            <span className="text-white text-lg">💬</span>
++          </div>
++        </button>
++      )}
++
++      {/* Expanded panel */}
++      {isOpen && (
++        <div className="w-[22rem] max-w-[calc(100vw-2rem)]">
++          <GlassCard className="p-0 overflow-hidden">
++            {/* Header */}
++            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-dark-bg/30">
++              <div className="flex items-center gap-3">
++                <div className="relative">
++                  <div className="h-9 w-9 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-purple p-[1px]">
++                    <div className="h-full w-full rounded-xl bg-dark-card/80 flex items-center justify-center">
++                      <span className="text-white">🤖</span>
++                    </div>
++                  </div>
++                  <span
++                    className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full ${statusDotClass} ring-2 ring-dark-bg`}
++                    title={statusLabel}
++                  />
++                </div>
++                <div>
++                  <div className="text-white font-semibold leading-tight">NeoBank Assistant</div>
++                  <div className="text-white/60 text-xs">{statusLabel || ""}</div>
++                </div>
++              </div>
++
++              <div className="flex items-center gap-2">
++                <Button
++                  variant="ghost"
++                  size="sm"
++                  onClick={() => {
++                    setMessages([
++                      {
++                        id: makeId(),
++                        from: "bot",
++                        text: "Hi! I’m your NeoBank assistant. Type ‘Help’ to see what I can do.",
++                        at: Date.now(),
++                      },
++                    ]);
++                  }}
++                  className="text-white/80 hover:text-white"
++                >
++                  Clear
++                </Button>
++                <Button
++                  variant="ghost"
++                  size="sm"
++                  onClick={() => setIsOpen(false)}
++                  className="text-white/80 hover:text-white"
++                >
++                  ✕
++                </Button>
++              </div>
++            </div>
++
++            {/* Messages */}
++            <div
++              ref={scrollRef}
++              className="h-[22rem] overflow-y-auto px-4 py-3 space-y-3 bg-dark-bg/10"
++            >
++              {messages.map((m) => {
++                const isUser = m.from === "user";
++                const isSystem = m.from === "system";
++
++                if (isSystem) {
++                  return (
++                    <div key={m.id} className="text-center text-xs text-white/50">
++                      {m.text}
++                    </div>
++                  );
++                }
++
++                return (
++                  <div
++                    key={m.id}
++                    className={`flex ${isUser ? "justify-end" : "justify-start"}`}
++                  >
++                    <div
++                      className={
++                        isUser
++                          ? "max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-r from-neon-cyan/20 to-neon-purple/20 border border-white/10 px-3 py-2 text-white"
++                          : "max-w-[85%] rounded-2xl rounded-bl-md bg-dark-card/70 border border-white/10 px-3 py-2 text-white"
++                      }
++                    >
++                      <div className="text-sm whitespace-pre-wrap break-words">{m.text}</div>
++                      <div className={`mt-1 text-[10px] ${isUser ? "text-white/60" : "text-white/40"}`}>
++                        {formatTime(m.at)}
++                      </div>
++                    </div>
++                  </div>
++                );
++              })}
++            </div>
++
++            {/* Input */}
++            <div className="p-3 border-t border-white/10 bg-dark-bg/20">
++              <div className="flex items-center gap-2">
++                <input
++                  value={input}
++                  onChange={(e) => setInput(e.target.value)}
++                  onKeyDown={onInputKeyDown}
++                  placeholder="Ask something… (e.g. Help, Balance, RecentTx)"
++                  className="flex-1 rounded-xl bg-dark-card/60 border border-white/10 px-3 py-2 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-neon-cyan/40"
++                />
++                <Button
++                  variant="primary"
++                  size="sm"
++                  onClick={() => void send()}
++                  disabled={!input.trim()}
++                  className="rounded-xl"
++                >
++                  Send
++                </Button>
++              </div>
++
++              {/* Tiny hint row */}
++              <div className="mt-2 flex flex-wrap gap-2">
++                {["Help", "Balance", "RecentTx"].map((q) => (
++                  <button
++                    key={q}
++                    type="button"
++                    onClick={() => {
++                      setIsOpen(true);
++                      setInput(q);
++                    }}
++                    className="text-xs text-white/70 hover:text-white rounded-full border border-white/10 bg-dark-card/40 px-2 py-1"
++                  >
++                    {q}
++                  </button>
++                ))}
++              </div>
++            </div>
++          </GlassCard>
++        </div>
++      )}
++    </div>
++  );
++}
+diff -ruN src/components/ui/Sidebar.tsx src/components/ui/Sidebar.tsx
+--- src/components/ui/Sidebar.tsx	2026-02-10 18:08:58.000000000 +0000
++++ src/components/ui/Sidebar.tsx	2026-02-10 19:12:37.501242276 +0000
+@@ -29,13 +29,7 @@
+       path: "/dashboard",
+       icon: <LayoutDashboard className="w-5 h-5" />,
+       label: "Portfolio Overview",
+-    },
+-    {
+-      path: "/chat",
+-      icon: <Bot className="w-5 h-5" />,
+-      label: "Chatbot",
+-    },
+-    ...(currentAccount
++    },    ...(currentAccount
+       ? [
+           {
+             path: `/accounts/${currentAccount.id}`,

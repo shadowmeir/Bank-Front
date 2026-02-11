@@ -1,4 +1,6 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5080").replace(/\/$/, "");
+// Single source of truth for backend base URL.
+// In production set VITE_API_BASE_URL (e.g. https://api.neobankers.org).
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5080").replace(/\/$/, "");
 
 export type ProblemDetails = {
   title?: string;
@@ -19,7 +21,7 @@ export class ApiError extends Error {
   }
 }
 
-function getToken(): string | null {
+export function getToken(): string | null {
   return localStorage.getItem("bank_access_token");
 }
 
@@ -56,7 +58,7 @@ export async function api<T>(
     h.set("Idempotency-Key", idempotencyKey);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...rest, headers: h });
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...rest, headers: h });
 
   if (!res.ok) {
     let pd: ProblemDetails | undefined;

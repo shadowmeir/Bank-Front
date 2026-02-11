@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Send, X, Wifi, WifiOff, Loader2 } from "lucide-react";
-import type { HubConnection } from "@microsoft/signalr";
+import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
 
 import { GlassCard } from "./GlassCard";
 import { useAuth } from "../../contexts/AuthContext";
-import { API_BASE_URL } from "../../lib/api";
 import { createChatbotConnection } from "../../lib/chatbot";
 
 type Role = "user" | "assistant";
@@ -28,7 +27,7 @@ function formatTime(ts: number) {
 }
 
 export function Chatbot() {
-  const { accessToken, isAuthenticated } = useAuth();
+  const { accessToken, isAuthed } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -70,61 +69,81 @@ export function Chatbot() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, isOpen]);
 
-  // Establish SignalR connection when authenticated.
+  // Establish SignalR connection only when the widget is open and the user is authed.
+  // (This keeps things light and also makes token refresh/re-login deterministic.)
   useEffect(() => {
-    let cancelled = false;
+    let disposed = false;
+
+    async function disconnect() {
+      setIsConnected(false);
+      const c = connectionRef.current;
+      connectionRef.current = null;
+      if (!c) return;
+      try {
+        c.off("ReceiveBotMessage");
+        await c.stop();
+      } catch {
+        // ignore
+      }
+    }
 
     async function connect() {
-      if (!isAuthenticated || !accessToken) {
-        setIsConnected(false);
-        if (connectionRef.current) {
-          try {
-            await connectionRef.current.stop();
-          } catch {
-            // ignore
-          }
-          connectionRef.current = null;
-        }
+      // Not authed OR widget closed => ensure disconnected.
+      if (!isAuthed || !accessToken || !isOpen) {
+        await disconnect();
         return;
       }
 
-      // Already created
+      // Already connected/connecting.
       if (connectionRef.current) return;
 
-      const conn = createChatbotConnection(accessToken, API_BASE_URL, (reply) => {
+      const { conn } = createChatbotConnection();
+      connectionRef.current = conn;
+
+      conn.on("ReceiveBotMessage", (reply: string) => {
+        if (disposed) return;
         setMessages((prev) => [
           ...prev,
-          { id: newId(), role: "assistant", content: reply, ts: Date.now() },
+          { id: newId(), role: "assistant", content: String(reply ?? ""), ts: Date.now() },
         ]);
         setIsTyping(false);
       });
 
       conn.onreconnecting(() => {
-        if (!cancelled) setIsConnected(false);
+        if (!disposed) setIsConnected(false);
       });
       conn.onreconnected(() => {
-        if (!cancelled) setIsConnected(true);
+        if (!disposed) setIsConnected(true);
       });
       conn.onclose(() => {
-        if (!cancelled) setIsConnected(false);
+        if (!disposed) setIsConnected(false);
       });
-
-      connectionRef.current = conn;
 
       try {
         await conn.start();
-        if (!cancelled) setIsConnected(true);
+        if (!disposed) setIsConnected(true);
       } catch {
-        if (!cancelled) setIsConnected(false);
+        if (disposed) return;
+        setIsConnected(false);
+        // If start fails, allow a clean retry (e.g. user reopens the widget)
+        // by clearing the ref and stopping the connection.
+        connectionRef.current = null;
+        try {
+          await conn.stop();
+        } catch {
+          // ignore
+        }
       }
     }
 
-    connect();
+    void connect();
 
     return () => {
-      cancelled = true;
+      disposed = true;
+      // If we unmount while open, best-effort cleanup.
+      void disconnect();
     };
-  }, [isAuthenticated, accessToken]);
+  }, [isAuthed, accessToken, isOpen]);
 
   async function send(text: string) {
     const message = text.trim();
@@ -154,7 +173,7 @@ export function Chatbot() {
 
     try {
       // Ensure started
-      if (conn.state !== "Connected") {
+      if (conn.state !== HubConnectionState.Connected) {
         await conn.start();
         setIsConnected(true);
       }
@@ -178,7 +197,7 @@ export function Chatbot() {
   }
 
   // Don’t render the widget on public pages.
-  if (!isAuthenticated) return null;
+  if (!isAuthed) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-[60]">
